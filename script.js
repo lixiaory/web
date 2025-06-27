@@ -91,16 +91,26 @@ function sendMessage() {
         loadingElement.style.display = 'block';
     }
 
-    const apiKey = '你的API Key';
-    const endpoint = 'https://api.deepseek.com/chat/completions';
+    // 阿里云百炼API配置
+    const appId = 'YOUR_APP_ID'; // 替换为您的百炼应用ID
+    const apiKey = 'YOUR_API_KEY'; // 替换为您的API Key
+    const endpoint = `https://bailian.aliyuncs.com/v2/apps/${appId}/completions`;
 
+    // 构建请求体
     const payload = {
-        model: "deepseek-chat",
-        messages: [
+        model: "qwen-turbo", // 根据您的需求选择合适的模型
+        prompt: message,
+        history: [
             { role: "system", content: "You are a helpful assistant" },
             { role: "user", content: message }
         ],
-        stream: false
+        parameters: {
+            topP: 0.8,
+            topK: 50,
+            seed: 42,
+            temperature: 0.7,
+            maxTokens: 1024
+        }
     };
 
     fetch(endpoint, {
@@ -118,8 +128,10 @@ function sendMessage() {
             loadingElement.style.display = 'none';
         }
 
-        if (data.choices && data.choices.length > 0) {
-            displayMessage('bot', data.choices[0].message.content);
+        if (data.data && data.data.text) {
+            displayMessage('bot', data.data.text);
+        } else if (data.message) {
+            displayMessage('bot', `API错误: ${data.message}`);
         } else {
             displayMessage('bot', '出错了，请稍后再试。');
         }
@@ -130,7 +142,7 @@ function sendMessage() {
             loadingElement.style.display = 'none';
         }
 
-        displayMessage('bot', '出错了，请稍后再试。');
+        displayMessage('bot', '网络请求失败，请检查连接。');
         console.error('Error:', error);
     });
 }
