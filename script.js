@@ -92,7 +92,7 @@ function sendMessage() {
     }
 
     // 阿里云DashScope API配置
-    const apiKey = 'sk-c4aaa0e1caaa462ab4733695f6ce3e3b	'; // 替换为您的DashScope API Key
+    const apiKey = 'sk-c4aaa0e1caaa462ab4733695f6ce3e3b'; // 替换为您的有效API Key
     const endpoint = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
 
     // 构建请求体，符合DashScope原生API格式
@@ -111,7 +111,7 @@ function sendMessage() {
             ]
         },
         parameters: {
-            result_format: "message" // 与Java示例一致，返回消息格式
+            result_format: "message" // 返回消息格式
         }
     };
 
@@ -120,13 +120,24 @@ function sendMessage() {
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`, // DashScope使用Bearer认证
-            'X-DashScope-Async': 'enable' // 启用异步调用
+            // 移除了异步调用头，使用同步调用
         },
         body: JSON.stringify(payload)
     })
     .then(response => {
+        // 首先检查HTTP状态码
         if (!response.ok) {
-            return response.json().then(err => { throw err; });
+            // 尝试解析错误响应体
+            return response.json().then(errorData => {
+                // 创建一个包含状态码和错误信息的错误对象
+                const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+                error.response = response;
+                error.data = errorData;
+                throw error;
+            }).catch(() => {
+                // 如果解析JSON失败，抛出原始错误
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            });
         }
         return response.json();
     })
@@ -143,12 +154,14 @@ function sendMessage() {
             if (assistantMessage.role === 'assistant' && assistantMessage.content) {
                 displayMessage('bot', assistantMessage.content);
             } else {
-                displayMessage('bot', '出错了，未收到有效回复。');
+                displayMessage('bot', '出错了：响应格式不正确');
+                console.error('无效的响应格式:', data);
             }
-        } else if (data.code && data.message) {
+        } else if (data.code) {
             displayMessage('bot', `API错误: ${data.code} - ${data.message}`);
         } else {
-            displayMessage('bot', '出错了，请稍后再试。');
+            displayMessage('bot', '出错了：未知的响应格式');
+            console.error('未知的响应格式:', data);
         }
     })
     .catch(error => {
@@ -157,18 +170,30 @@ function sendMessage() {
             loadingElement.style.display = 'none';
         }
 
-        let errorMessage = '出错了，请稍后再试。';
-        if (error.code && error.message) {
-            errorMessage = `API错误: ${error.code} - ${error.message}`;
-        } else if (error.message) {
-            errorMessage = `请求失败: ${error.message}`;
+        let errorMessage = '请求失败：';
+        
+        // 处理不同类型的错误
+        if (error.message) {
+            errorMessage += error.message;
+        } else {
+            errorMessage += '未知错误';
         }
+        
+        // 如果有响应数据，添加详细信息
+        if (error.data) {
+            if (error.data.code && error.data.message) {
+                errorMessage += ` (${error.data.code}: ${error.data.message})`;
+            } else if (error.data.message) {
+                errorMessage += ` (${error.data.message})`;
+            }
+        }
+        
         displayMessage('bot', errorMessage);
-        console.error('Error:', error);
+        console.error('API请求错误:', error);
     });
 }
 
-// 添加主题切换功能
+// 主题切换功能
 function toggleTheme() {
     document.body.classList.toggle('dark-mode');
     const chatContainer = document.querySelector('.chat-container');
@@ -193,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// 添加下拉菜单功能
+// 下拉菜单功能
 function toggleDropdown(event) {
     event.preventDefault();
     document.getElementById('dropdownMenu').classList.toggle('show');
@@ -211,7 +236,7 @@ window.onclick = function(event) {
     }
 }
 
-// 添加回车发送功能
+// 回车发送功能
 document.getElementById('chat-input').addEventListener('keypress', function(event) {
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
