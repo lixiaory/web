@@ -92,9 +92,9 @@ function sendMessage() {
     }
 
     // 阿里云百炼API配置
-    const appId = 'YOUR_APP_ID'; // 替换为您的百炼应用ID
-    const apiKey = 'YOUR_API_KEY'; // 替换为您的API Key
-    const endpoint = `https://bailian.aliyuncs.com/v2/apps/${appId}/completions`;
+    const appId = '2170184'; // 替换为您的百炼应用ID
+    const apiKey = 'sk-c4aaa0e1caaa462ab4733695f6ce3e3b'; // 替换为您的API Key
+    const endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 
     // 构建请求体
     const payload = {
