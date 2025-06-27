@@ -91,25 +91,27 @@ function sendMessage() {
         loadingElement.style.display = 'block';
     }
 
-    // 阿里云百炼API配置
-    const appId = '2170184'; // 替换为您的百炼应用ID
-    const apiKey = 'sk-c4aaa0e1caaa462ab4733695f6ce3e3b'; // 替换为您的API Key
-    const endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1";
+    // 阿里云DashScope API配置
+    const apiKey = 'sk-c4aaa0e1caaa462ab4733695f6ce3e3b	'; // 替换为您的DashScope API Key
+    const endpoint = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
 
-    // 构建请求体
+    // 构建请求体，符合DashScope原生API格式
     const payload = {
-        model: "qwen-turbo", // 根据您的需求选择合适的模型
-        prompt: message,
-        history: [
-            { role: "system", content: "You are a helpful assistant" },
-            { role: "user", content: message }
-        ],
+        model: "qwen-plus", // 使用qwen-plus模型
+        input: {
+            messages: [
+                {
+                    role: "system",
+                    content: "You are a helpful assistant."
+                },
+                {
+                    role: "user",
+                    content: message
+                }
+            ]
+        },
         parameters: {
-            topP: 0.8,
-            topK: 50,
-            seed: 42,
-            temperature: 0.7,
-            maxTokens: 1024
+            result_format: "message" // 与Java示例一致，返回消息格式
         }
     };
 
@@ -117,21 +119,34 @@ function sendMessage() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
+            'Authorization': `Bearer ${apiKey}`, // DashScope使用Bearer认证
+            'X-DashScope-Async': 'enable' // 启用异步调用
         },
         body: JSON.stringify(payload)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw err; });
+        }
+        return response.json();
+    })
     .then(data => {
         // 隐藏加载动画
         if (loadingElement) {
             loadingElement.style.display = 'none';
         }
 
-        if (data.data && data.data.text) {
-            displayMessage('bot', data.data.text);
-        } else if (data.message) {
-            displayMessage('bot', `API错误: ${data.message}`);
+        // 处理DashScope API响应
+        if (data.output && data.output.choices && data.output.choices.length > 0) {
+            // 获取助手回复内容
+            const assistantMessage = data.output.choices[0].message;
+            if (assistantMessage.role === 'assistant' && assistantMessage.content) {
+                displayMessage('bot', assistantMessage.content);
+            } else {
+                displayMessage('bot', '出错了，未收到有效回复。');
+            }
+        } else if (data.code && data.message) {
+            displayMessage('bot', `API错误: ${data.code} - ${data.message}`);
         } else {
             displayMessage('bot', '出错了，请稍后再试。');
         }
@@ -142,7 +157,13 @@ function sendMessage() {
             loadingElement.style.display = 'none';
         }
 
-        displayMessage('bot', '网络请求失败，请检查连接。');
+        let errorMessage = '出错了，请稍后再试。';
+        if (error.code && error.message) {
+            errorMessage = `API错误: ${error.code} - ${error.message}`;
+        } else if (error.message) {
+            errorMessage = `请求失败: ${error.message}`;
+        }
+        displayMessage('bot', errorMessage);
         console.error('Error:', error);
     });
 }
