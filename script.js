@@ -92,7 +92,7 @@ function sendMessage() {
     }
 
     // 阿里云DashScope API配置
-    const apiKey = 'sk-c4aaa0e1caaa462ab4733695f6ce3e3b'; // 替换为您的有效API Key
+    const apiKey = ''; // 替换为您的有效API Key
     const endpoint = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
 
     // 构建请求体，符合DashScope原生API格式
